@@ -6,6 +6,9 @@
 # that is, 3 spacial dimensions each voxel containing a 3 component vector
 # where the 3 vector components constitute a fourth dimension of the dataset
 #
+# The MHA input file is supposed to contain velocity vectors in cm/s unit
+# this is beenig converted to micrometer/s in the FLD output file
+#
 #
 # ----- VERSION HISTORY -----
 #
@@ -252,6 +255,9 @@ print('.', end='') #progress indicator
 data = data.reshape(dim3,dim2,dim1,veclen)
 print('.', end='') #progress indicator
 ''' pure python MHA read ---end--- '''
+
+# conversion from cm/s to micrometer/s
+data *= 10000.0 
 
 #calculate variables for FLD header
 ndim   = len(data.shape)-1

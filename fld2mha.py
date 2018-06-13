@@ -6,6 +6,9 @@
 # that is, 3 spacial dimensions each voxel containing a 3 component vector
 # where the 3 vector components constitute a fourth dimension of the dataset
 #
+# The FLD input file is supposed to contain velocity vectors in micrometer/s unit
+# this is beenig converted to cm/s in the MHA output file
+#
 #
 # ----- VERSION HISTORY -----
 #
@@ -241,6 +244,7 @@ except: pass # silent
 try: data = data [0:dim1*dim2*dim3*veclen]
 except: print ('ERROR: dimension problem in FLD data'); sys.exit(2); 
 data = data.reshape(dim3,dim2,dim1,veclen)
+data /= 10000.0 #conversion from micrometer/s to cm/s 
 
 '''
 The FLD file has some extra data at the end
@@ -314,7 +318,7 @@ sys.exit(0)
 '''
 write MHA with pure ITK (nibabel not required)
 
-enable the above import lines tfor this to work
+enable the above import lines for this to work
   import new # required for ITK work with pyinstaller
   import itk
   
