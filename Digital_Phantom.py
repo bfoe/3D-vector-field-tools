@@ -1,6 +1,30 @@
 #
 # creates a digial phantom for flow simulations
-# that consists o a simple cilindrical tube
+# that consists of a simple cylindrical tube
+#
+# output files are named as follows m(including  indented use):
+#    1) Pantom_LXXXmm_DYYYmm_RYYYum.nii.gz, where:
+#       XXX is the length   of the tube in millimeters  as entered by the user
+#       YYY is the diameter of the tube in millimeters  as entered by the user
+#       ZZZ is the diameter of the tube in micrometers as entered by the user
+#       The file contains "ones" representing the interior of the tube
+#       and "zeros" representing the exterior, as normally required for a binarized object
+#       The format is a compressed NIFTI that can be imported directly in the PerGeos software
+#       to simulate flow behaviour
+#    2) Veloci_LXXXmm_DYYYmm_RYYYum_PWWWWWWPa.nii.gz, where:
+#       XXX,YYY,ZZZ are the same as above and additionally: 
+#       WWWWW is the pressure (difference between in and out) in Pascal
+#       This NIFTI file contains the velocity magnitude values
+#       and can be visualized in e.g. MRIcro
+#       (velocity values are in units of cm/s)
+#    3) Veloci_LXXXmm_DYYYmm_RYYYum_PWWWWWWPa.mha (naming same as in 2)
+#       This file contains the velocity vector field and can be visualized
+#       in the ParaView software
+#       (velocity values are in units of cm/s)
+#    4) Veloci_LXXXmm_DYYYmm_RYYYum_PWWWWWWPa.fld (naming same as in 2)
+#       This file contains the velocity vector field and can be imported directly
+#       in the PerGeos software, for comparison with the internal PerGeos algorithms
+#       (differently from 2 and 3 the velocity values are in units of micrometers/s)
 #
 #    This program was developed under Python Version 2.7
 #    with the following additional libraries: 
