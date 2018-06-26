@@ -89,9 +89,9 @@ nom_area = np.square(float(diameter/2.))*np.pi
 eff_area = np.count_nonzero(data[:,:,0])*resolution**2
 error    = (eff_area-nom_area)/nom_area*100.
 print ('')
-print ('Nominal   crossection area : %0.1f' % (nom_area*1.0e6**2.), str(chr(230))+'m'+str(chr(253)))
-print ('Effective crossection area : %0.1f' % (eff_area*1.0e6**2.), str(chr(230))+'m'+str(chr(253)))
-print ('Error after discretization : %0.2f' % error, '%')    
+print ('Nominal   crossection area  : %0.1f' % (nom_area*1.0e6**2.), str(chr(230))+'m'+str(chr(253)))
+print ('Effective crossection area  : %0.1f' % (eff_area*1.0e6**2.), str(chr(230))+'m'+str(chr(253)))
+print ('Error after discretization  : %0.2f' % error, '%')    
     
 
 #
@@ -119,12 +119,14 @@ velocity *= mask
 nom_flow_rate = pressure*np.pi*(diameter/2.)**4/(8*length*viscosity)
 eff_flow_rate = np.sum(velocity[:,:,0])*resolution**2
 error    = (eff_flow_rate-nom_flow_rate)/nom_flow_rate*100.
-print ('Maximum flow velocity      : %0.1f' % (np.amax(velocity[:,:,:])*1.0e2), 'cm/s')
-print ('Nominal   flow rate        : %0.3f' % (nom_flow_rate*1.0e6), 'ml')
-print ('Effective flow rate        : %0.3f' % (eff_flow_rate*1.0e6), 'ml')
-print ('Error after discretization : %0.2f' % error, '%')
+print ('Maximum flow velocity       : %0.1f' % (np.amax(velocity[:,:,:])*1.0e2), 'cm/s')
+print ('Average flow velocity (tube): %0.1f' % (np.average(velocity[velocity>0])*1.0e2), 'cm/s')
+print ('Average flow velocity (all) : %0.1f' % (np.average(velocity[:])*1.0e2), 'cm/s')
+print ('Nominal   flow rate         : %0.3f' % (nom_flow_rate*1.0e6), 'ml')
+print ('Effective flow rate         : %0.3f' % (eff_flow_rate*1.0e6), 'ml')
+print ('Error after discretization  : %0.2f' % error, '%')
 
-# calculation permeability
+# calculation permeability within the tube
 # https://en.wikipedia.org/wiki/Darcy_(unit)
 # https://pt.wikipedia.org/wiki/Lei_de_Darcy
 #
@@ -134,9 +136,19 @@ print ('Error after discretization : %0.2f' % error, '%')
 nom_permeability = nom_flow_rate*length*viscosity/(pressure*nom_area)
 eff_permeability = eff_flow_rate*length*viscosity/(pressure*eff_area)
 error    = (eff_permeability-nom_permeability)/nom_permeability*100.
-print ('Nominal   permeability     : %0.1f' % (nom_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
-print ('Effective permeability     : %0.1f' % (eff_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
-print ('Error after discretization : %0.2f' % error, '%')
+print ('Nominal permeability (tube) : %0.1f' % (nom_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
+print ('Effect. permeability (tube) : %0.1f' % (eff_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
+print ('Error after discretization  : %0.2f' % error, '%')
+
+# calculation permeability of the whole area (incl outside tube)
+#
+area_all = resolution*dim1 * resolution*dim2
+nom_all_permeability = nom_flow_rate*length*viscosity/(pressure*area_all)
+eff_all_permeability = eff_flow_rate*length*viscosity/(pressure*area_all)
+error    = (eff_all_permeability-nom_all_permeability)/nom_all_permeability*100.
+print ('Nominal permeability (all)  : %0.1f' % (nom_all_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
+print ('Effect. permeability (all)  : %0.1f' % (eff_all_permeability*1.0e6**2), str(chr(230))+'m'+str(chr(253)))
+print ('Error after discretization  : %0.2f' % error, '%')
 
 #createNIFTI of binarized Phantom
 filename  = 'Pantom_L'+str(int(length*1e3))+'mm_D'+str(diameter*1e3)+'mm_R'
