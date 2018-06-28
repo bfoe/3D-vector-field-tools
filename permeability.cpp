@@ -156,7 +156,7 @@ void writeVTK(MultiBlockLattice3D<T,DESCRIPTOR>& lattice, T resolution, T C_velo
     vtkOut.writeData<3,float>(*computeVelocity(lattice),   "velocity",     C_velocity*100.); // *100. is velocity conversion from m/s to cm/s
 }
 
-T computePermeability(MultiBlockLattice3D<T,DESCRIPTOR>& lattice, T nu, T deltaP, T resolution, T pressure_physical, Box3D domain )
+T computePermeability(MultiBlockLattice3D<T,DESCRIPTOR>& lattice, T nu, T deltaP, Box3D domain )
 {
     pcout << "Computing the permeability." << std::endl;
 
@@ -169,21 +169,9 @@ T computePermeability(MultiBlockLattice3D<T,DESCRIPTOR>& lattice, T nu, T deltaP
     pcout << "Average velocity     = " << meanU                         << std::endl;
     pcout << "Lattice viscosity nu = " << nu                            << std::endl;
     pcout << "Grad P               = " << deltaP/(T)(nx-1)              << std::endl;
-    pcout << "Latice  Permeability = " << nu*meanU / (deltaP/(T)(nx-1)) << std::endl;
-    pcout << std::endl;
+    pcout << "Permeability         = " << nu*meanU / (deltaP/(T)(nx-1)) << std::endl;
 
-    const T permeability_physical = nu*meanU / (deltaP/(T)(nx-1)) * resolution * resolution; // in [m^2]
-    pcout << "Pysical Permeability = " << permeability_physical*1e6*1e6 << "μm²" << std::endl;
-    const T dynamic_viscosity_pysical = 0.001; // in [Pa.s] = [kg/m/s]
-    const T mean_velocity_pysical = permeability_physical/dynamic_viscosity_pysical * pressure_physical /(T)(nx-1)/resolution;
-    pcout << "Pysical mean velocity = " << mean_velocity_pysical*100. << "cm/s" << std::endl;
-    const T C_velocity = (mean_velocity_pysical)/meanU; // conversion constant for lattice velocity to physical velocity in [m/s]
-    pcout << "Conversion constant for velocity    (dx/dt) = " << C_velocity << " m/s" << std::endl;
-    pcout << "Conversion constant for spatial units  (dx) = " << resolution << " m" << std::endl;
-    pcout << "Conversion constant for temporal units (dt) = " << resolution/C_velocity << " s" << std::endl;
-
-    //return meanU; // original code
-    return C_velocity;
+    return meanU;
 }
 
 int main(int argc, char **argv)
@@ -198,7 +186,7 @@ int main(int argc, char **argv)
         pcout << "3. number of cells in X direction.\n";
         pcout << "4. number of cells in Y direction.\n";
         pcout << "5. number of cells in Z direction.\n";
-        pcout << "6. spatial resolution in meter (e.g 0.0001 for 100μm)\n";
+        pcout << "6. spatial resolution in meter (e.g 0.0001 for 100um)\n";
         pcout << "7. Delta P .\n";
         pcout << "Example: " << argv[0] << " twoSpheres.dat tmp\\ 48 64 64 0.0001 0.00005\n";
         exit (EXIT_FAILURE);
@@ -234,10 +222,6 @@ int main(int argc, char **argv)
     pcout << "ny = " << lattice.getNy() << std::endl;
     pcout << "nz = " << lattice.getNz() << std::endl;
 
-    const T pressure_physical = deltaP/resolution/resolution;
-    pcout << "resolution [m] = " << resolution << std::endl;
-    pcout << "pressure [Pa=kg/m/s] = " << pressure_physical << std::endl;
-
     porousMediaSetup(lattice, createLocalBoundaryCondition3D<T,DESCRIPTOR>(), geometry, deltaP);
 
     // The value-tracer is used to stop the simulation once is has converged.
@@ -270,9 +254,28 @@ int main(int argc, char **argv)
     pcout << "End of simulation at iteration " << iT << std::endl;
 
     pcout << "Permeability:" << std::endl << std::endl;
-    T C_velocity;
-    C_velocity = computePermeability(lattice, nu, deltaP, resolution, pressure_physical, lattice.getBoundingBox());
+    const T meanU = computePermeability(lattice, nu, deltaP, lattice.getBoundingBox());
     pcout << std::endl;
+
+    const T dynamic_viscosity = 0.001; // in [Pa.s] = [kg/m/s]
+    const T density = 1000; // in [kg/m^3] (water)
+    const T kinematic_viscosity = dynamic_viscosity/density; // in water 1e-6 [m^2/s]
+    const T dt = nu/kinematic_viscosity * pow(resolution,2);
+    const T C_velocity = resolution/dt; // velocity conversion constant is defined as dx/dt
+    const T pressure_physical = deltaP * density * pow(resolution,2) / pow(dt,2);
+    const T permeability_lattice = nu*meanU / (deltaP/(T)(nx-1));
+    const T permeability_physical = permeability_lattice * pow(resolution,2); // in [m^2]
+    pcout << "dt = " << dt << " s" << std::endl;
+    pcout << "dx = " << resolution << " m" << std::endl;
+    pcout << "dx/dt = " << C_velocity << " m/s" << std::endl;
+    pcout << "Pressure = " << pressure_physical << " Pa" << std::endl;
+    pcout << "Pysical Permeability = " << permeability_physical*1e6*1e6 << "μm²" << std::endl;
+    pcout << "Pysical mean velocity = " << meanU*C_velocity*100. << "cm/s" << std::endl;
+    //old code
+    const T mean_velocity_pysical = permeability_physical/dynamic_viscosity * pressure_physical /(T)(nx-1)/resolution;
+    pcout << "Pysical mean velocity = " << mean_velocity_pysical*100. << "cm/s" << std::endl;
+
+
 
     pcout << "Writing VTK file ..." << std::endl << std::endl;
     writeVTK(lattice, resolution, C_velocity, iT);
