@@ -119,11 +119,11 @@ velocity *= mask
 nom_flow_rate = pressure*np.pi*(diameter/2.)**4/(8*length*viscosity)
 eff_flow_rate = np.sum(velocity[:,:,0])*resolution**2
 error    = (eff_flow_rate-nom_flow_rate)/nom_flow_rate*100.
-print ('Maximum flow velocity       : %0.1f' % (np.amax(velocity[:,:,:])*1.0e2), 'cm/s')
-print ('Average flow velocity (tube): %0.1f' % (np.average(velocity[velocity>0])*1.0e2), 'cm/s')
-print ('Average flow velocity (all) : %0.1f' % (np.average(velocity[:])*1.0e2), 'cm/s')
-print ('Nominal   flow rate         : %0.3f' % (nom_flow_rate*1.0e6), 'ml')
-print ('Effective flow rate         : %0.3f' % (eff_flow_rate*1.0e6), 'ml')
+print ('Maximum flow velocity       : %0.3f' % (np.amax(velocity[:,:,:])*1.0e2), 'cm/s')
+print ('Average flow velocity (tube): %0.3f' % (np.average(velocity[velocity>0])*1.0e2), 'cm/s')
+print ('Average flow velocity (all) : %0.3f' % (np.average(velocity[:])*1.0e2), 'cm/s')
+print ('Nominal   flow rate         : %0.5f' % (nom_flow_rate*1.0e6), 'ml')
+print ('Effective flow rate         : %0.5f' % (eff_flow_rate*1.0e6), 'ml')
 print ('Error after discretization  : %0.2f' % error, '%')
 
 # calculation permeability within the tube
