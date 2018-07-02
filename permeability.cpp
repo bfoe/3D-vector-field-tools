@@ -60,7 +60,7 @@ private:
     plint nx;
 };
 
-void readGeometry(std::string fNameIn, std::string fNameOut, MultiScalarField3D<int>& geometry)
+void readGeometry(std::string fNameIn, std::string fNameOut, MultiScalarField3D<int>& geometry, T resolution)
 {
     const plint nx = geometry.getNx();
     const plint ny = geometry.getNy();
@@ -79,7 +79,7 @@ void readGeometry(std::string fNameIn, std::string fNameOut, MultiScalarField3D<
     }
 
     {
-        VtkImageOutput3D<T> vtkOut("porousMedium", 1.0);
+        VtkImageOutput3D<T> vtkOut("porousMedium", resolution*1e6);
         vtkOut.writeData<float>(*copyConvert<int,T>(geometry, geometry.getBoundingBox()), "tag", 1.0);
     }
 
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
 
     pcout << "Reading the geometry file." << std::endl;
     MultiScalarField3D<int> geometry(nx,ny,nz);
-    readGeometry(fNameIn, fNameOut, geometry);
+    readGeometry(fNameIn, fNameOut, geometry, resolution);
 
     pcout << "nu = " << nu << std::endl;
     pcout << "deltaP = " << deltaP << std::endl;
