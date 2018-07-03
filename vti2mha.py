@@ -128,7 +128,7 @@ else: INfile=""
 if INfile == "":
     #intercatively choose input file
     INfile = askopenfilename(title="Open file", filetypes=[("VTI files",('*.vti'))])
-    if INfile == "": showwarning("Open file", "No input file specified ... operation aborted"); sys.exit(2)
+    if INfile == "": showerror("Open file", "No input file specified ... operation aborted"); sys.exit(2)
     INfile = os.path.abspath(INfile)
     INfile=str(INfile)     
     
