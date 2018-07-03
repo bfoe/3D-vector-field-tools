@@ -1,25 +1,9 @@
 #
-# uses ITK to convert whatever format ITK can read and write
-#
-# supported file formats are described here:
-#     https://itk.org/Wiki/ITK/FAQ#What_3D_file_formats_can_ITK_import_and_export.3F
-#     https://itk.org/Wiki/ITK/File_Formats
-#
-# ITK identifies the file format by the file extension
-# therefore just specify the output file name and all the rest 
-# goes automatically
-#
-# things that can go wrong:
-#     - incompatible file formats
-#       for example MHA files can contain several 3D components, e.g. on for 
-#       each component of a vector field.
-#       opposed to this NIFTI files are not adequate to store vector fields
-#     - at this point of time the python ITK wrapper is at version level 4.13.0
-#       obviously only file formats supported by the used ITK version are supported    
+# uses VTK to convert VTI format to MHA
 #
 # ----- VERSION HISTORY -----
 #
-# Version 0.1 - 29, June 2018
+# Version 0.1 - 3, July 2018
 #       - 1st public github Release
 #
 # ----- LICENSE -----                 
@@ -43,7 +27,8 @@
 #
 #    This program was developed under Python Version 2.7
 #    with the following additional libraries: 
-#    - itk 
+#    - numpy
+#    - vtk 
 #
 
 
@@ -51,7 +36,6 @@ from __future__ import print_function
 import sys
 import os
 from getopt import getopt
-import new # required for ITK work with pyinstaller
 import zlib
 import numpy as np
 from vtk import vtkXMLImageDataReader
