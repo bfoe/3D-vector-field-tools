@@ -1,6 +1,6 @@
 #
 # compares two 3D vector fields in MHA format
-# and returns two similarity measures in NIFTI format:
+# and returns two similarity measures in MHA format:
 # 1) difference of normalized magnitude values
 #    first, magnitude values of bos samples are normalized 
 #    with respect to the mean velocity over the whole volume (incl. zeros)

@@ -44,9 +44,7 @@ import struct
 import zlib
 from getopt import getopt
 import numpy as np
-#import nibabel as nib
-#import new # required for ITK work with pyinstaller
-#import itk
+
 
 TK_installed=True
 try: from tkFileDialog import askopenfilename # Python 2
@@ -179,9 +177,12 @@ if data.shape[0] != dim1*dim2*dim3:
     print ('ERROR: Problem figuring out ordering of lines in input textfile');
     print ('       maybe this is not a regularly spaced grid but a mesh ???');    
     sys.exit(2)
-Resolution1 = (np.max(data [:,0])-np.min(data [:,0]))/(dim1-1)
-Resolution2 = (np.max(data [:,1])-np.min(data [:,1]))/(dim2-1)
-Resolution3 = (np.max(data [:,2])-np.min(data [:,2]))/(dim3-1)
+Extension1  = np.max(data [:,0])-np.min(data [:,0])
+Extension2  = np.max(data [:,1])-np.min(data [:,1])
+Extension3  = np.max(data [:,2])-np.min(data [:,2])
+Resolution1 = Extension1/(dim1)
+Resolution2 = Extension2/(dim2)
+Resolution3 = Extension3/(dim3)
 offset1 = (np.max(data [:,0])+np.min(data [:,0]))/2
 offset2 = (np.max(data [:,1])+np.min(data [:,1]))/2
 offset3 = (np.max(data [:,2])+np.min(data [:,2]))/2
@@ -190,12 +191,9 @@ data = np.reshape (data[:,3:6], (dim1,dim2,dim3,3))
 data = np.nan_to_num (data)
 
 print ("dimension  = ",dim1, dim2, dim3)
+print ("extension  = ",Extension1, Extension2, Extension3)
 print ("resolution = ",Resolution1, Resolution2, Resolution3)
 print ("offset     = ",offset1, offset2, offset3)
-Resolution3 = 2*Resolution2 #quickfix - check
-offset3 = 2*offset2         #quickfix - check
-print ("resolution corrected = ",Resolution1, Resolution2, Resolution3)
-print ("offset     corrected = ",offset1, offset2, offset3)
 
 
 #write MHA (no special libraries required)
