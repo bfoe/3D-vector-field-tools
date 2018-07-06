@@ -244,7 +244,7 @@ data1 = data1.reshape(dim3,dim2,dim1,veclen)
 
 #read MHA header of second input file
 end_header=False
-header_dict = {}
+header2_dict = {}
 with open(INfile2, "rb") as f:
     while not end_header:
         line = f.readline()    
@@ -252,56 +252,32 @@ with open(INfile2, "rb") as f:
         param_name = param_name.strip()
         current_line = current_line.strip()
         value = ParseSingleValue(current_line)
-        header_dict[param_name] = value
+        header2_dict[param_name] = value
         if param_name == 'ElementDataFile': end_header=True
     rawdata = f.read()
     
-#extract relevant parameters from header and check for not implemented stuff
-try: objecttype = header_dict["ObjectType"]
-except: showerror('ERROR parsing MHA', 'Parameter "ObjectType" not found ... operation aborted'); sys.exit(2)
-if objecttype !='Image': showerror('ERROR parsing MHA', 'ObjectType must be "Image" ... operation aborted'); sys.exit(2)
-try: ndim = header_dict["NDims"]
-except: showerror('ERROR parsing MHA', 'Parameter "NDims" not found ... operation aborted'); sys.exit(2)
-if ndim !=3: showerror('ERROR parsing MHA', 'Parameter "NDims"<>3 not implemented ... operation aborted'); sys.exit(2)
-try: binarydata = header_dict["BinaryData"]
-except: showerror('ERROR parsing MHA', 'Parameter "BinaryData" not found ... operation aborted'); sys.exit(2)
-if binarydata !='True': showerror('ERROR parsing MHA', 'only format with BinaryData implemented ... operation aborted'); sys.exit(2)
-try: order = header_dict["BinaryDataByteOrderMSB"]
-except: showwarning('Warning parsing MHA', 'Parameter "BinaryDataByteOrderMSB" not found assuming "False"'); order='False'
-if order !='False': showerror('ERROR parsing MHA', 'only format with BinaryDataByteOrderMSB=Flase implemented ... operation aborted'); sys.exit(2)
-try: compressed = header_dict["CompressedData"]
+#check if headers are identical
+Header_diff = ''
+try:
+    if header_dict["ObjectType"] != header2_dict["ObjectType"]: Header_diff += 'ObjectType '
+    if header_dict["NDims"] != header2_dict["NDims"]: Header_diff += 'NDims '
+    if header_dict["BinaryData"] != header2_dict["BinaryData"]: Header_diff += 'BinaryData '
+    if header_dict["BinaryDataByteOrderMSB"] != header2_dict["BinaryDataByteOrderMSB"]: Header_diff += 'BinaryDataByteOrderMSB '
+    if header_dict["ElementSpacing"] !=header2_dict["ElementSpacing"]: Header_diff += 'ElementSpacing '
+    if header_dict["DimSize"] !=header2_dict["DimSize"]: Header_diff += 'DimSize '
+    if header_dict["ElementNumberOfChannels"] != header2_dict["ElementNumberOfChannels"]: Header_diff += 'ElementNumberOfChannels '
+    if header_dict["ElementType"] != header2_dict["ElementType"]: Header_diff += 'ElementType '
+    if header_dict["ElementDataFile"] !=header2_dict["ElementDataFile"]: Header_diff += 'ElementDataFile '
+except: showwarning('Warning parsing MHA','Some parameter was not found in the header of second input file');
+if Header_diff != '': showwarning('Warning parsing MHA','Unequal MHA header parameters'+Header_diff); 
+try: compressed2 = header_dict["CompressedData"]
 except: showwarning('Warning parsing MHA', 'Parameter "CompressedData" not found assuming "False"'); compressed='False'
-if compressed =='True': compressed=True
-else: compressed=False
-try: Resolution = header_dict["ElementSpacing"]
-except: showerror('ERROR parsing MHA', 'Parameter "ElementSpacing" not found ... operation aborted'); sys.exit(2)
-try:
-    Resolution  = Resolution.split()
-    SpatResol1 = float (Resolution[0])
-    SpatResol2 = float (Resolution[1])
-    SpatResol3 = float (Resolution[2])
-except: showerror('ERROR parsing MHA', 'Problem parsing parameter "ElementSpacing" ... operation aborted'); sys.exit(2)
-try: dims = header_dict["DimSize"]
-except: showerror('ERROR parsing MHA', 'Parameter "DimSize" not found ... operation aborted'); sys.exit(2)
-try:
-    dims  = dims.split()
-    dim1 = int (dims[0])
-    dim2 = int (dims[1])
-    dim3 = int (dims[2])
-except: showerror('ERROR parsing MHA', 'Problem parsing parameter "DimSize" ... operation aborted'); sys.exit(2)
-try: veclen = header_dict["ElementNumberOfChannels"]
-except: showerror('ERROR parsing MHA', 'Parameter "ElementNumberOfChannels" not found ... operation aborted'); sys.exit(2)
-if veclen !=3: showerror('ERROR parsing MHA', 'Parameter "ElementNumberOfChannels"<>3 not implemented ... operation aborted'); sys.exit(2) 
-try: datatype = header_dict["ElementType"]
-except: showerror('ERROR parsing MHA', 'Parameter "ElementType" not found ... operation aborted'); sys.exit(2)
-if datatype !='MET_FLOAT': showerror('ERROR parsing MHA', 'Parameter "ElementType" must be "MET_FLOAT" ... operation aborted'); sys.exit(2)
-try: datalocation = header_dict["ElementDataFile"]
-except: showerror('ERROR parsing MHA', 'Parameter "ElementDataFile" not found ... operation aborted'); sys.exit(2)
-if datalocation !='LOCAL': showerror('ERROR parsing MHA', 'Parameter "ElementDataFile" must be "LOCAL" ... operation aborted'); sys.exit(2)
-# paramters that are ignored: TransformMatrix, Offset, CenterOfRotation, AnatomicalOrientation, CompressedDataSize
+if compressed2 =='True': compressed2=True
+else: compressed2=False
+
 
 #decode binary string to floats
-if compressed: rawdata = zlib.decompress(rawdata); 
+if compressed2: rawdata = zlib.decompress(rawdata); 
 if (len(rawdata) % 4) > 0:
     showwarning('Warning reading MHA', 'Data length not a multiple of 4 ... truncating')
     length = int(len(rawdata)/4.0)*4
@@ -323,12 +299,13 @@ dim=data1.shape
 data1_mag = np.sqrt(np.sum(np.square(data1[:,:,:,:]),axis=3)); nonzero1 = np.nonzero(data1_mag)
 data2_mag = np.sqrt(np.sum(np.square(data2[:,:,:,:]),axis=3)); nonzero2 = np.nonzero(data2_mag)
 data1_avg = np.average(data1_mag); data2_avg = np.average(data2_mag)
-
-nonzero = np.nonzero(data1_mag+data2_mag)
+nonzero_noreshape = np.nonzero(data1_mag+data2_mag)
 data_mag_diff = np.zeros(shape=(dim[0],dim[1],dim[2]), dtype=np.float32)
-data_mag_diff[nonzero] = (data1_mag[nonzero]/data1_avg - data2_mag[nonzero]/data2_avg) \
-                       /((data1_mag[nonzero]/data1_avg + data2_mag[nonzero]/data2_avg)/2.)*100  # result in % 
-data_mag_diff[:,:,dim[2]-1]=0 # there's trash in here, dunno why                       
+data_mag_diff[nonzero_noreshape] = (data1_mag[nonzero_noreshape]/data1_avg - data2_mag[nonzero_noreshape]/data2_avg) \
+                       /((data1_mag[nonzero_noreshape]/data1_avg + data2_mag[nonzero_noreshape]/data2_avg)/2.)*100  # result in % 
+data_mag_diff[:,:,dim[2]-1]=0 # there's trash in here, dunno why
+average_magnitude_deviation = np.average(np.abs(data_mag_diff[nonzero_noreshape]))
+print ("Average Magnitude Deviation:", average_magnitude_deviation, "%")
 
 #normalize to unity vectors
 dummy=data1[:,:,:,0]; dummy[nonzero1] = np.divide(dummy[nonzero1],data1_mag[nonzero1]); data1[:,:,:,0]=dummy
@@ -343,43 +320,90 @@ data1 = data1.reshape (dim[0]*dim[1]*dim[2],dim[3])
 data2 = data2.reshape (dim[0]*dim[1]*dim[2],dim[3])
 data1_mag = data1_mag.reshape (dim[0]*dim[1]*dim[2])
 data2_mag = data2_mag.reshape (dim[0]*dim[1]*dim[2])
-nonzero = np.nonzero(data1_mag*data2_mag)
+nonzero_reshaped = np.nonzero(data1_mag*data2_mag)
 cos_angle = np.zeros(shape=(dim[0]*dim[1]*dim[2]), dtype=np.float32)
 angle     = np.zeros(shape=(dim[0]*dim[1]*dim[2]), dtype=np.float32)
 for i in range (0,dim[0]*dim[1]*dim[2]):
   cos_angle[i] = np.dot(data1[i,:],data2[i,:])
-angle[nonzero] = np.arccos(np.clip(cos_angle[nonzero], -1, 1))*180./np.pi # result in angle 0..180
+angle[nonzero_reshaped] = np.arccos(np.clip(cos_angle[nonzero_reshaped], -1, 1))*180./np.pi # result in angle 0..180
 angle = angle.reshape (dim[0],dim[1],dim[2])
 angle[:,:,dim[2]-1]=0 # there's trash in here, dunno why
+average_angular_deviation = np.average(angle[nonzero_noreshape])
+print ("Average  Angular  Deviation:", average_angular_deviation, "degrees")
 
-#transform to int
-max_magnitude = np.amax(data_mag_diff);
-data_mag_diff *= 32767./max_magnitude
-data_mag_diff = data_mag_diff.astype(np.int16)
-max_angle = np.amax(angle);
-angle *= 32767./max_angle
-angle = angle.astype(np.int16)
+OK = True
+#write MHA magnitude difference 
+OUTfile = os.path.join(dirname,basename1+'-'+basename2+'_MAGNT_DIFF.mha')
+data_mag_diff = np.ndarray.flatten(data_mag_diff)
+print('.', end='') #progress indicator
+data_mag_diff = data_mag_diff.newbyteorder('S').astype('>f')
+data_mag_diff = bytearray (data_mag_diff)
+data_mag_diff = np.asarray(data_mag_diff).astype(np.uint8)
+data_mag_diff = data_mag_diff.tostring()
+print('.', end='') #progress indicator
+compressed = False
+data_mag_diff = zlib.compress(data_mag_diff);compressed = True # comment this line 4 uncompressed MHA file
+print('.', end='') #progress indicator
+data_size=len (data_mag_diff)
+try:
+  with open(OUTfile, "wb") as f:
+    f.write('ObjectType = Image\n')
+    f.write('NDims=3\n')
+    f.write('BinaryData = True\n')
+    f.write('BinaryDataByteOrderMSB = False\n')
+    if compressed: 
+        f.write('CompressedData = True\n')
+        f.write('CompressedDataSize = '+str(data_size)+'\n')        
+    else: 
+        f.write('CompressedData = False\n')
+    f.write('TransformMatrix = '+header_dict["TransformMatrix"]+'\n')
+    f.write('Offset = '+header_dict["Offset"]+'\n')    
+    f.write('CenterOfRotation = '+header_dict["CenterOfRotation"]+'\n')  
+    f.write('AnatomicalOrientation = LPI\n')
+    f.write('ElementSpacing ='+header_dict["ElementSpacing"]+'\n')  
+    f.write('DimSize = '+str(dim[2])+' '+str(dim[1])+' '+str(dim[0])+'\n')
+    f.write('ElementNumberOfChannels = 1\n')
+    f.write('ElementType = MET_FLOAT\n')     
+    f.write('ElementDataFile = LOCAL\n')  
+    f.write (data_mag_diff)    
+except:
+    showerror("Write file", "Unable to write output file "+basename1+'-'+basename2+'_MAGNT_DIFF.mha');OK=False   
 
-
-#save NIFTI
-aff = np.eye(4)
-aff[0,0] = Resolution [0]; aff[0,3] = -(data_mag_diff.shape[0]/2)*aff[0,0]
-aff[1,1] = Resolution [1]; aff[1,3] = -(data_mag_diff.shape[1]/2)*aff[1,1]
-aff[2,2] = Resolution [2]; aff[2,3] = -(data_mag_diff.shape[2]/2)*aff[2,2]
-NIFTIimg_mag = nib.Nifti1Image(data_mag_diff, aff)
-NIFTIimg_mag.header.set_slope_inter(max_magnitude/32767.,0)
-NIFTIimg_mag.header.set_xyzt_units(3, 8)
-NIFTIimg_mag.set_sform(aff, code=0)
-NIFTIimg_mag.set_qform(aff, code=1)
-NIFTIimg_ang = nib.Nifti1Image(angle, aff)
-NIFTIimg_ang.header.set_slope_inter(max_angle/32767.,0)
-NIFTIimg_ang.header.set_xyzt_units(3, 8)
-NIFTIimg_ang.set_sform(aff, code=0)
-NIFTIimg_ang.set_qform(aff, code=1)
-OK=True
-try: nib.save(NIFTIimg_mag, os.path.join(dirname,basename1+'-'+basename2+'_MAGNT_DIFF.nii.gz'))
-except: showerror("Write file", "Unable to write output file ",basename1+'-'+basename2+'_MAGNT_DIFF.nii.gz');OK=False   
-try: nib.save(NIFTIimg_ang, os.path.join(dirname,basename1+'-'+basename2+'_ANGLE_DIFF.nii.gz')) 
-except: showerror("Write file", "Unable to write output file ",basename1+'-'+basename2+'_ANGLE_DIFF.nii.gz');OK=False  
-
+#write MHA angle difference 
+OUTfile = os.path.join(dirname,basename1+'-'+basename2+'_ANGLE_DIFF.mha')
+angle = np.ndarray.flatten(angle)
+print('.', end='') #progress indicator
+angle = angle.newbyteorder('S').astype('>f')
+angle = bytearray (angle)
+angle = np.asarray(angle).astype(np.uint8)
+angle = angle.tostring()
+print('.', end='') #progress indicator
+compressed = False
+angle = zlib.compress(angle);compressed = True # comment this line 4 uncompressed MHA file
+print('.', end='') #progress indicator
+data_size=len (angle)
+try:
+  with open(OUTfile, "wb") as f:
+    f.write('ObjectType = Image\n')
+    f.write('NDims=3\n')
+    f.write('BinaryData = True\n')
+    f.write('BinaryDataByteOrderMSB = False\n')
+    if compressed: 
+        f.write('CompressedData = True\n')
+        f.write('CompressedDataSize = '+str(data_size)+'\n')        
+    else: 
+        f.write('CompressedData = False\n')
+    f.write('TransformMatrix = '+header_dict["TransformMatrix"]+'\n')
+    f.write('Offset = '+header_dict["Offset"]+'\n')    
+    f.write('CenterOfRotation = '+header_dict["CenterOfRotation"]+'\n')  
+    f.write('AnatomicalOrientation = LPI\n')
+    f.write('ElementSpacing ='+header_dict["ElementSpacing"]+'\n')  
+    f.write('DimSize = '+str(dim[2])+' '+str(dim[1])+' '+str(dim[0])+'\n')
+    f.write('ElementNumberOfChannels = 1\n')
+    f.write('ElementType = MET_FLOAT\n')     
+    f.write('ElementDataFile = LOCAL\n')    
+    f.write (angle)    
+except:
+    showerror("Write file", "Unable to write output file "+basename1+'-'+basename2+'_ANGLE_DIFF.mha');OK=False       
+    
 if OK: showinfo("Done", "Files written successfully")
