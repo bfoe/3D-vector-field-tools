@@ -187,7 +187,7 @@ offset1 = (np.max(data [:,0])+np.min(data [:,0]))/2
 offset2 = (np.max(data [:,1])+np.min(data [:,1]))/2
 offset3 = (np.max(data [:,2])+np.min(data [:,2]))/2
 #reshape raw data
-data = np.reshape (data[:,3:6], (dim1,dim2,dim3,3))
+data = np.reshape (data[:,3:6], (dim3,dim2,dim1,3))
 data = np.nan_to_num (data)
 
 print ("dimension  = ",dim1, dim2, dim3)
