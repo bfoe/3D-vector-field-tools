@@ -40,6 +40,7 @@ try: import win32gui, win32console
 except: pass #silent
 import sys
 import os
+import math
 import struct
 import zlib
 from getopt import getopt
@@ -61,7 +62,11 @@ if not TK_installed:
     print ('       on MacOS install ActiveTcl from:')
     print ('       http://www.activestate.com/activetcl/downloads')
     sys.exit(2)
-
+    
+def round_auto (value):
+    digits=int(math.ceil(-math.log10(abs(value))))
+    return round(value,digits+6)
+    
 def checkfile(file): # generic check if file exists
     if not os.path.isfile(file): 
         print ('ERROR:  File not found:\n        '+file); exit(1)
@@ -165,36 +170,100 @@ INfile = os.path.abspath(INfile)
 basename = os.path.splitext(os.path.basename(INfile))[0]
 dirname  = os.path.dirname(INfile)     
 
+#read header
+end_header=False
+header_dict = {}
+with open(INfile, "r") as f:
+    while not end_header:
+        line = f.readline()    
+        if not line.startswith('%'): end_header=True 
+        if not end_header: 
+           dummy = map(str.strip, line[1:-1].split(':'))
+           if len(dummy) > 1: 
+                param_name = dummy[0]
+                if len(dummy) > 2: value =  " ".join(dummy[1:-1])
+                else: value = dummy[1]
+                header_dict[param_name] = value
+           else: # no ":" in string
+                dummy = map(str.strip, line[1:-1].split())
+                if len(dummy) == 9: # extract the velocity units
+                   header_dict["Velocity unit X"] = dummy[4].strip('(').strip(')')
+                   header_dict["Velocity unit Y"] = dummy[6].strip('(').strip(')')
+                   header_dict["Velocity unit Z"] = dummy[8].strip('(').strip(')')
+                   
+#sanity checks
+try: ndim = header_dict["Dimension"]
+except: print ('ERROR: Parameter "Dimension" not found in header'); sys.exit(2);
+if ndim !="3": print ('ERROR: Parameter "Dimension"<>3 not implemented'); sys.exit(2);
+try: expr = header_dict["Expressions"]
+except: print ('ERROR: Parameter "Expressions" not found in header'); sys.exit(2);
+if expr !="3": print ('ERROR: Parameter "Expressions"<>3 not implemented'); sys.exit(2);
+try: nodes = header_dict["Nodes"]
+except: print ('ERROR: Parameter "Nodes" not found in header'); sys.exit(2);
+try: nodes=int(nodes)                 
+except: print ('ERROR: Problem parsing "Nodes" parameter'); sys.exit(2);         
+try: l_unit = header_dict["Length unit"]
+except: print ('ERROR: Parameter "Length unit" not found in header'); sys.exit(2);
+try:
+    if l_unit == "m": l_unit=1
+    elif l_unit == "dm": l_unit=10
+    elif l_unit == "cm": l_unit=100
+    elif l_unit == "mm": l_unit=1000
+    elif l_unit == str(chr(194))+str(chr(181))+"m": l_unit=1000000 # 194+181 is for micrometer
+    else: print ('ERROR: Unknown "Length unit" parameter'); sys.exit(2);
+except: print ('ERROR: Problem parsing "Length unit" parameter'); sys.exit(2);
+try: 
+    v_unit = header_dict["Velocity unit X"]
+    v1_unit = header_dict["Velocity unit Y"]
+    v2_unit = header_dict["Velocity unit Z"]
+except: print ('ERROR: Parameter "Velocity unit" not found in header'); sys.exit(2);
+if v_unit != v1_unit or v_unit != v2_unit:
+    print ('ERROR: Different Velocity unit for X,Y,Z components not implemented'); sys.exit(2);
+try:
+    if v_unit == "m/s": v_unit=1
+    elif v_unit == "dm/s": v_unit=10
+    elif v_unit == "cm/s": v_unit=100
+    elif v_unit == "mm/s": v_unit=1000
+    elif v_unit == str(chr(194))+str(chr(181))+"m/s": v_unit=1000000# 194+181 is for micrometer
+    else: print ('ERROR: Unknown "Velocity unit" parameter'); sys.exit(2);
+except: print ('ERROR: Problem parsing "Velocity unit" parameter'); sys.exit(2);
+print ("Nodes =", nodes)
+print ("Length unit =", l_unit)
+print ("Velocity unit =", v_unit)
+         
 #read raw data
 data = np.genfromtxt (INfile, dtype = np.float32, comments='%')
 if data.shape[1] != 6: 
     print ('ERROR: Text files is expected to contain 6 columns'); 
     sys.exit(2)
+if data.shape[0] != nodes: #santiy check
+    print ('Warning: number of data rows different from value specified in header ');
 dim1 = np.unique(data [:,0]).shape[0]
 dim2 = np.unique(data [:,1]).shape[0]
 dim3 = np.unique(data [:,2]).shape[0]
 if data.shape[0] != dim1*dim2*dim3: 
     print ('ERROR: Problem figuring out ordering of lines in input textfile');
     print ('       maybe this is not a regularly spaced grid but a mesh ???');    
-    sys.exit(2)
-Extension1  = np.max(data [:,0])-np.min(data [:,0])
-Extension2  = np.max(data [:,1])-np.min(data [:,1])
-Extension3  = np.max(data [:,2])-np.min(data [:,2])
-Resolution1 = Extension1/(dim1)
-Resolution2 = Extension2/(dim2)
-Resolution3 = Extension3/(dim3)
-offset1 = (np.max(data [:,0])+np.min(data [:,0]))/2
-offset2 = (np.max(data [:,1])+np.min(data [:,1]))/2
-offset3 = (np.max(data [:,2])+np.min(data [:,2]))/2
-#reshape raw data
+    sys.exit(2)   
+Extension1  = (np.max(data [:,0])-np.min(data [:,0]))/l_unit
+Extension2  = (np.max(data [:,1])-np.min(data [:,1]))/l_unit
+Extension3  = (np.max(data [:,2])-np.min(data [:,2]))/l_unit
+Resolution1 = round_auto(Extension1/(dim1-1))
+Resolution2 = round_auto(Extension2/(dim2-1))
+Resolution3 = round_auto(Extension3/(dim3-1))
+offset1 = (np.max(data [:,0])+np.min(data [:,0]))/2/l_unit
+offset2 = (np.max(data [:,1])+np.min(data [:,1]))/2/l_unit
+offset3 = (np.max(data [:,2])+np.min(data [:,2]))/2/l_unit
+#reshape data
 data = np.reshape (data[:,3:6], (dim3,dim2,dim1,3))
 data = np.nan_to_num (data)
+data /= v_unit
+abs_data = np.sqrt(np.sum(np.square(data),axis=3))
 
-print ("dimension  = ",dim1, dim2, dim3)
-print ("extension  = ",Extension1, Extension2, Extension3)
-print ("resolution = ",Resolution1, Resolution2, Resolution3)
-print ("offset     = ",offset1, offset2, offset3)
-
+print ("Maximum velocity ="+str(np.amax(abs_data))+" m/s")
+print ("Data dimension =", dim1, dim2,dim3)
+print ("Resolution = "+str(Resolution1)+" m,   "+str(Resolution2)+" m,   "+str(Resolution3)+" m")
+print ("Offset = = "+str(offset1)+" m,   "+str(offset2)+" m,   "+str(offset3)+" m")
 
 #write MHA (no special libraries required)
 ndim   = len(data.shape)-1
